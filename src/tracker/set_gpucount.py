@@ -47,19 +47,19 @@ def get_config_value_multi(config: Dict[str, Any], keys: tuple) -> int:
 
 def set_gpucount(node: EasyDict, team: str) -> int:
     """チームごとのGPUカウントを設定する"""
-    # デフォルト値の処理
-    gpu_count = node.runInfo.gpuCount if node.runInfo else 0
+    # デフォルト値の設定
+    default_gpu_count = node.runInfo.gpuCount if node.runInfo else 0
     
     if team not in TEAM_CONFIGS:
         logger.warning(f"Unknown team {team}. Using default GPU count.")
-        return gpu_count
+        return default_gpu_count
 
     config_dict = json.loads(node.config)
     
     try:
         team_config = TEAM_CONFIGS[team]
         if team_config is None:
-            return gpu_count
+            return default_gpu_count
         
         node_key, gpu_key = team_config
         if isinstance(node_key, tuple):
@@ -67,12 +67,19 @@ def set_gpucount(node: EasyDict, team: str) -> int:
         else:
             num_nodes = get_config_value(config_dict, node_key)
         
+        if num_nodes == 0:
+            logger.warning(f"num_nodes is 0 for {team} ({node.name}). Using default GPU count.")
+            return default_gpu_count
+
         if team == "karakuri-geniac":
             gpu_count = num_nodes
         elif team in ["abeja-geniac", "alt-geniac"]:
             gpu_count = num_nodes * 8
         elif gpu_key:
             num_gpus = get_config_value(config_dict, gpu_key)
+            if num_gpus == 0:
+                logger.warning(f"num_gpus is 0 for {team} ({node.name}). Using default GPU count.")
+                return default_gpu_count
             gpu_count = num_nodes * num_gpus
         else:
             gpu_count = num_nodes
@@ -80,5 +87,6 @@ def set_gpucount(node: EasyDict, team: str) -> int:
         logger.info(f"Calculated GPU count for {team} ({node.name}): {gpu_count}")
     except Exception as e:
         logger.error(f"Error calculating GPU count for {team} ({node.name}): {str(e)}")
+        return default_gpu_count
     
-    return gpu_count
+    return gpu_count if gpu_count > 0 else default_gpu_count
