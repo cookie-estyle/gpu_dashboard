@@ -39,8 +39,12 @@ class DashboardChecker:
         else:
             runs = self.get_runs()
             errors = self.check_runs(companies, runs)
-
-        self.send_alert(errors)
+        
+        if config.data.enable_alert:
+            self.send_alert(errors)
+        else:
+            for error in errors:
+                print(error)
 
     def get_company_schedule(self) -> List[CompanySchedule]:
         """企業名と開始日を取得する"""
@@ -78,16 +82,24 @@ class DashboardChecker:
     def check_runs(self, companies: Set[str], runs: object) -> List[UpdateError]:
         """runをチェックし、エラーがあれば返す"""
         errors = []
-        companies_found = []
+        companies_found = set()
         tag_for_latest = self.config.data.dashboard.tag_for_latest
-
+        
         for run in runs:
             if tag_for_latest in run.tags:
-                another_tags = [r for r in run.tags if r != tag_for_latest]
-                self.check_tags(another_tags, run.tags, companies_found, errors)
-                self.check_target_date(run.name, errors)
-
-        self.check_companies(companies, companies_found, errors)
+                company_tags = [r for r in run.tags if r != tag_for_latest]
+                if len(company_tags) == 1 and company_tags[0] in companies:
+                    companies_found.add(company_tags[0])
+                    self.check_target_date(run.name, errors)
+        
+        missing_companies = companies - companies_found
+        if missing_companies:
+            errors.append(UpdateError(title="Missing latest runs", text=f"Companies without latest runs: {missing_companies}"))
+        
+        extra_companies = companies_found - companies
+        if extra_companies:
+            errors.append(UpdateError(title="Unexpected latest runs", text=f"Unexpected companies with latest runs: {extra_companies}"))
+        
         return errors
 
     def check_tags(self, another_tags: List[str], all_tags: List[str], companies_found: List[str], errors: List[UpdateError]) -> None:
