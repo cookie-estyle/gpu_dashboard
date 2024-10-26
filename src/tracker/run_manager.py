@@ -236,14 +236,11 @@ class RunManager:
                 return pl.DataFrame()
 
             metrics_df_small_width = self.__extract_relevant_columns(metrics_df_with_datetime)
-            del metrics_df_with_datetime  # 不要になったDataFrameを削除
 
             if metrics_df_small_width.width == 2:
                 return pl.DataFrame()
 
             daily_metrics_df = self.__process_daily_metrics(metrics_df_small_width, metrics_df)
-            del metrics_df_small_width  # 不要になったDataFrameを削除
-            del metrics_df  # 元のmetrics_dfも削除
 
             return daily_metrics_df
 
