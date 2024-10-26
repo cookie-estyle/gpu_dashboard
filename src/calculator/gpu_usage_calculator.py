@@ -185,7 +185,7 @@ class GPUUsageCalculator:
         target_week_start = self.end_date - dt.timedelta(days=self.end_date.weekday())
         
         all_runs_df_without_team = self.add_team().with_columns(
-            (pl.col("date") - pl.duration(days=pl.col("date").dt.weekday())).alias("week_start")
+            (pl.col("date") - pl.duration(days=(pl.col("date").dt.weekday() % 7))).alias("week_start")
         )
         keys = ["company", "week_start"]
 
@@ -350,10 +350,10 @@ class GPUUsageCalculator:
                                         "Total runs": pl.Int64, "master_node_runs": pl.Int64, 
                                         "overlap_runs": pl.Int64, "ignore_runs": pl.Int64})
         
-        start_date = self.end_date - dt.timedelta(days=(self.end_date.weekday() + 7))
-        end_date = start_date + dt.timedelta(days=7)
+        start_date = self.end_date - dt.timedelta(days=(self.end_date.weekday() + 1) % 7)
+        end_date = start_date + dt.timedelta(days=6)
         df_filtered = self.all_runs_df.filter(
-            (pl.col('date') >= start_date) & (pl.col('date') < end_date)
+            (pl.col('date') >= start_date) & (pl.col('date') <= end_date)
         )
         
         summary = (
@@ -410,10 +410,21 @@ class GPUUsageCalculator:
         self.update_companies(gpu_daily_table, gpu_weekly_table, gpu_summary_table)
 
 if __name__ == "__main__":
-    df = pl.read_csv('dev/processed_df.csv', schema={"date": pl.Date, "company_name": pl.Utf8, "project": pl.Utf8, "run_id": pl.Utf8, "tags": pl.Utf8, 
+    df = pl.read_csv('dev/new_runs_df.csv', schema={"date": pl.Date, "company_name": pl.Utf8, "project": pl.Utf8, "run_id": pl.Utf8, "tags": pl.Utf8, 
                                                      "created_at": pl.Datetime, "updated_at": pl.Datetime, "state": pl.Utf8, "duration_hour": pl.Float64, 
                                                      "gpu_count": pl.Int64, "average_gpu_utilization": pl.Float64, "average_gpu_memory": pl.Float64, 
                                                      "max_gpu_utilization": pl.Float64, "max_gpu_memory": pl.Float64, "host_name": pl.Utf8, "logged_at": pl.Datetime})
-    date_range = ["2024-02-01", "2024-04-16"]
+    date_range = ["2024-10-26", "2024-10-26"]
     guc = GPUUsageCalculator(df, date_range)
-    guc.update_tables()
+    # guc.update_tables()
+    gpu_overall_table = guc.agg_overall()
+    gpu_monthly_table = guc.agg_monthly()
+    gpu_weekly_table = guc.agg_weekly()
+    gpu_daily_table = guc.agg_daily()
+    gpu_summary_table = guc.agg_summary()
+    gpu_overall_table.write_csv("dev/gpu_overall_table.csv")
+    gpu_monthly_table.write_csv("dev/gpu_monthly_table.csv")
+    gpu_weekly_table.write_csv("dev/gpu_weekly_table.csv")
+    gpu_daily_table.write_csv("dev/gpu_daily_table.csv")
+    gpu_summary_table.write_csv("dev/gpu_summary_table.csv")
+
