@@ -6,3 +6,4 @@ dev/
 wandb/
 wandb_artifacts/
 artifacts/
+*.ipynb
