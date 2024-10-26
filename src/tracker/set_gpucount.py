@@ -15,14 +15,14 @@ TEAM_CONFIGS = {
     "syntheticgestalt-geniac": None,
     "humanome-geniac": None,
     "eques-geniac": None,
-    "karakuri-geniac": ("world size", None),
+    "karakuri-geniac": ("world_size", None),
     "aidealab-geniac": None,
     "aihub-geniac": None,
     "abeja-geniac": (("NUM_NODES", "trainer.num_nodes"), None),
     "alt-geniac": ("NNODES", None),
     "ricoh-geniac": ("NNODES", "NUM_GPUS"),
     "aiinside-geniac": None,
-    "future-geniac": None,
+    "future-geniac": ("world_size", None),
     "ubitus-geniac": None,
     "nablas-geniac": ("num_nodes", "num_gpus_per_node"),
     "jamstec-geniac": None,
@@ -70,10 +70,8 @@ def set_gpucount(node: EasyDict, team: str) -> int:
         if num_nodes == 0:
             logger.warning(f"num_nodes is 0 for {team} ({node.name}). Using default GPU count.")
             return default_gpu_count
-
-        if team == "karakuri-geniac":
-            gpu_count = num_nodes
-        elif team in ["abeja-geniac", "alt-geniac"]:
+        
+        if team in ["abeja-geniac", "alt-geniac"]:
             gpu_count = num_nodes * 8
         elif gpu_key:
             num_gpus = get_config_value(config_dict, gpu_key)
