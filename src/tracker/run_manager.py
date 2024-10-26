@@ -404,7 +404,7 @@ class RunManager:
         return df
 
 if __name__ == "__main__":
-    date_range = ["2024-08-14", "2024-10-11"]
+    date_range = ["2024-10-25", "2024-10-25"]
     rm = RunManager(date_range, True)
     df = rm.fetch_runs()
     df.write_csv("dev/new_runs_df.csv")
