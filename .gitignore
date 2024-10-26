@@ -5,3 +5,4 @@ __pycache__/
 dev/
 wandb/
 wandb_artifacts/
+artifacts/

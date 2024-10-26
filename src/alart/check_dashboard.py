@@ -34,13 +34,15 @@ class DashboardChecker:
         companies = self.get_in_progress_companies()
         errors = []
 
-        if not companies:
-            errors.append(UpdateError(title="No active companies", text="There are no companies currently active."))
-        else:
+        if companies:
             runs = self.get_runs()
-            errors = self.check_runs(companies, runs)
+            errors.extend(self.check_runs(companies, runs))
+            errors.extend(self.check_artifacts(companies, runs))
+
+        else:
+            errors.append(UpdateError(title="No active companies", text="There are no companies currently active."))
         
-        if config.data.enable_alert:
+        if self.config.data.enable_alert:
             self.send_alert(errors)
         else:
             for error in errors:
@@ -119,6 +121,42 @@ class DashboardChecker:
         if companies != set(companies_found):
             errors.append(UpdateError(title="Error of companies", text=str(companies_found)))
 
+    def check_artifacts(self, companies: Set[str], runs: object) -> List[UpdateError]:
+        """アーティファクトをチェックし、エラーがあれば返す"""
+        errors = []
+        tag_for_latest = self.config.data.dashboard.tag_for_latest
+
+        for run in runs:
+            if tag_for_latest in run.tags:
+                company_tags = [r for r in run.tags if r != tag_for_latest]
+                if len(company_tags) == 1 and company_tags[0] in companies and company_tags[0] != "overall":
+                    company = company_tags[0]
+                    try:
+                        # runに関連付けられたアーティファクトを取得
+                        artifact_name = f"run-{run.id}-company_daily_gpu_usage:v0"
+                        artifact = self.api.artifact(f"{self.config.data.dashboard.entity}/{self.config.data.dashboard.project}/{artifact_name}")
+                        
+                        # テーブル名は 'company_daily_gpu_usage' と仮定
+                        table = artifact.get('company_daily_gpu_usage')
+                        df = table.get_dataframe()
+
+                        # GPU稼働率(%)のチェック
+                        if 'GPU稼働率(%)' in df.columns:
+                            gpu_usage = df['GPU稼働率(%)'].mean()
+                            if gpu_usage <= 10:
+                                errors.append(UpdateError(
+                                    title=f"Low GPU Usage for {company}",
+                                    text=f"Average GPU usage is {gpu_usage:.2f}%, which is below 10%"
+                                ))
+
+                    except Exception as e:
+                        errors.append(UpdateError(
+                            title=f"Error checking artifacts for {company}",
+                            text=str(e)
+                        ))
+
+        return errors
+    
     def send_alert(self, errors: List[UpdateError]) -> None:
         """wandbでアラートを送信する"""
         with wandb.init(
@@ -126,11 +164,11 @@ class DashboardChecker:
             project=self.config.data.dashboard.project,
             name="Health Alert",
         ) as run:
-            alert_title = "Dashboard health check"
+            alert_title = f"Dashboard health check for {self.config.TARGET_DATE_STR}"
             if errors:
-                msg = "\n".join(f"{error.title}: {error.text}" for error in errors)
+                msg = f"Target Date: {self.config.TARGET_DATE_STR}\n\n" + "\n".join(f"{error.title}: {error.text}" for error in errors)
             else:
-                msg = "No errors found. All active companies are reporting as expected."
+                msg = f"Target Date: {self.config.TARGET_DATE_STR}\n\nNo errors found. All active companies are reporting as expected."
             
             print(msg)
             wandb.alert(title=alert_title, text=msg)
