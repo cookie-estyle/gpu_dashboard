@@ -7,3 +7,5 @@ wandb/
 wandb_artifacts/
 artifacts/
 *.ipynb
+
+.github/workflows/*
