@@ -157,10 +157,6 @@ class RunManager:
         if not node.get("runInfo").get("gpu"):
             return False
         
-        # 特定のtagをスキップ
-        if not set(CONFIG.ignore_tags).isdisjoint([t.lower() for t in node.tags]):
-            return False
-
         # ランの期間と指定期間に重なりがあるかチェック
         if updatedAt.date() < self.start_date or createdAt.date() > self.end_date:
             return False
