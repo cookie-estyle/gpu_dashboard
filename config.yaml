@@ -175,13 +175,3 @@ companies:
         assigned_gpu_node: 8
       - date: "2025-04-24"
         assigned_gpu_node: 0
-
-  ### ユビタス ###
-  - company: ubitus-geniac
-    teams:
-      - ubitus-geniac
-    schedule:
-      - date: "2024-10-25"
-        assigned_gpu_node: 32
-      - date: "2025-04-24"
-        assigned_gpu_node: 0

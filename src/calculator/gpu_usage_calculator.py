@@ -344,17 +344,6 @@ class GPUUsageCalculator:
 
                 wandb.log(data_to_log)
 
-                if CONFIG.enable_alert and not gpu_daily_company_table.is_empty():
-                    latest_row_dict = gpu_daily_company_table.to_pandas().to_dict(
-                        orient="records"
-                    )[0]
-                    threshold = 10
-                    if latest_row_dict["GPU稼働率(%)"] < threshold:
-                        wandb.alert(
-                            title="Too low utilization rate found.",
-                            text=company,
-                        )
-
     def agg_summary(self) -> pl.DataFrame:
         if self.all_runs_df.is_empty():
             return pl.DataFrame(schema={"company_name": pl.Utf8, "project": pl.Utf8, "Total hours": pl.Float64, 

@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Tuple, Optional
 from easydict import EasyDict
 import json
 import logging
@@ -15,14 +15,14 @@ TEAM_CONFIGS = {
     "syntheticgestalt-geniac": None,
     "humanome-geniac": None,
     "eques-geniac": None,
-    "karakuri-geniac": ("world size", None),
+    "karakuri-geniac": ("world_size", None),
     "aidealab-geniac": None,
     "aihub-geniac": None,
     "abeja-geniac": (("NUM_NODES", "trainer.num_nodes"), None),
     "alt-geniac": ("NNODES", None),
     "ricoh-geniac": ("NNODES", "NUM_GPUS"),
     "aiinside-geniac": None,
-    "future-geniac": None,
+    "future-geniac": ("world_size", None),
     "ubitus-geniac": None,
     "nablas-geniac": ("num_nodes", "num_gpus_per_node"),
     "jamstec-geniac": None,
@@ -37,7 +37,7 @@ def get_config_value(config: Dict[str, Any], key: str) -> int:
         logger.warning(f"Could not convert '{value}' to int. Using 0 instead.")
         return 0
 
-def get_config_value_multi(config: Dict[str, Any], keys: tuple) -> int:
+def get_config_value_multi(config: Dict[str, Any], keys: Tuple[str, ...]) -> int:
     """複数のキーから最初に見つかった値を取得し、整数に変換する"""
     for key in keys:
         value = get_config_value(config, key)
@@ -45,9 +45,21 @@ def get_config_value_multi(config: Dict[str, Any], keys: tuple) -> int:
             return value
     return 0
 
+def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dict[str, Any], team: str, node_name: str) -> int:
+    """GPUカウントを計算する"""
+    if team in ["abeja-geniac", "alt-geniac"]:
+        return num_nodes * 8
+    elif gpu_key:
+        num_gpus = get_config_value(config_dict, gpu_key)
+        if num_gpus == 0:
+            logger.warning(f"num_gpus is 0 for {team} ({node_name}). Using num_nodes as GPU count.")
+            return num_nodes
+        return num_nodes * num_gpus
+    else:
+        return num_nodes
+
 def set_gpucount(node: EasyDict, team: str) -> int:
     """チームごとのGPUカウントを設定する"""
-    # デフォルト値の設定
     default_gpu_count = node.runInfo.gpuCount if node.runInfo else 0
     
     if team not in TEAM_CONFIGS:
@@ -62,31 +74,17 @@ def set_gpucount(node: EasyDict, team: str) -> int:
             return default_gpu_count
         
         node_key, gpu_key = team_config
-        if isinstance(node_key, tuple):
-            num_nodes = get_config_value_multi(config_dict, node_key)
-        else:
-            num_nodes = get_config_value(config_dict, node_key)
+        num_nodes = get_config_value_multi(config_dict, node_key) if isinstance(node_key, tuple) else get_config_value(config_dict, node_key)
         
         if num_nodes == 0:
             logger.warning(f"num_nodes is 0 for {team} ({node.name}). Using default GPU count.")
             return default_gpu_count
-
-        if team == "karakuri-geniac":
-            gpu_count = num_nodes
-        elif team in ["abeja-geniac", "alt-geniac"]:
-            gpu_count = num_nodes * 8
-        elif gpu_key:
-            num_gpus = get_config_value(config_dict, gpu_key)
-            if num_gpus == 0:
-                logger.warning(f"num_gpus is 0 for {team} ({node.name}). Using default GPU count.")
-                return default_gpu_count
-            gpu_count = num_nodes * num_gpus
-        else:
-            gpu_count = num_nodes
+        
+        gpu_count = calculate_gpu_count(num_nodes, gpu_key, config_dict, team, node.name)
         
         logger.info(f"Calculated GPU count for {team} ({node.name}): {gpu_count}")
+        return gpu_count if gpu_count > 0 else default_gpu_count
+    
     except Exception as e:
         logger.error(f"Error calculating GPU count for {team} ({node.name}): {str(e)}")
         return default_gpu_count
-    
-    return gpu_count if gpu_count > 0 else default_gpu_count
