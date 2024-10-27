@@ -284,7 +284,7 @@ class GPUUsageCalculator:
 
         return gpu_overall_table
 
-    def update_overall(self, gpu_overall_table: pl.DataFrame, gpu_monthly_table: pl.DataFrame, gpu_weekly_table: pl.DataFrame):
+    def update_overall(self, gpu_overall_table: pl.DataFrame, gpu_monthly_table: pl.DataFrame, gpu_weekly_table: pl.DataFrame, gpu_daily_table: pl.DataFrame):
         with wandb.init(
             entity=CONFIG.dashboard.entity,
             project=CONFIG.dashboard.project,
@@ -297,6 +297,7 @@ class GPUUsageCalculator:
                     "overall_gpu_usage": wandb.Table(data=gpu_overall_table.to_pandas()),
                     "monthly_gpu_usage": wandb.Table(data=gpu_monthly_table.to_pandas()),
                     "weekly_gpu_usage": wandb.Table(data=gpu_weekly_table.to_pandas()),
+                    "daily_gpu_usage": wandb.Table(data=gpu_daily_table.to_pandas()),
                 }
             )
             if gpu_overall_table.is_empty():
@@ -406,7 +407,7 @@ class GPUUsageCalculator:
         gpu_weekly_table = self.agg_weekly()
         gpu_daily_table = self.agg_daily()
         gpu_summary_table = self.agg_summary()
-        self.update_overall(gpu_overall_table, gpu_monthly_table, gpu_weekly_table)
+        self.update_overall(gpu_overall_table, gpu_monthly_table, gpu_weekly_table, gpu_daily_table)
         self.update_companies(gpu_daily_table, gpu_weekly_table, gpu_summary_table)
 
 if __name__ == "__main__":
@@ -414,7 +415,7 @@ if __name__ == "__main__":
                                                      "created_at": pl.Datetime, "updated_at": pl.Datetime, "state": pl.Utf8, "duration_hour": pl.Float64, 
                                                      "gpu_count": pl.Int64, "average_gpu_utilization": pl.Float64, "average_gpu_memory": pl.Float64, 
                                                      "max_gpu_utilization": pl.Float64, "max_gpu_memory": pl.Float64, "host_name": pl.Utf8, "logged_at": pl.Datetime})
-    date_range = ["2024-10-26", "2024-10-26"]
+    date_range = ["2024-10-25", "2024-10-25"]
     guc = GPUUsageCalculator(df, date_range)
     # guc.update_tables()
     gpu_overall_table = guc.agg_overall()
@@ -427,4 +428,3 @@ if __name__ == "__main__":
     gpu_weekly_table.write_csv("dev/gpu_weekly_table.csv")
     gpu_daily_table.write_csv("dev/gpu_daily_table.csv")
     gpu_summary_table.write_csv("dev/gpu_summary_table.csv")
-
