@@ -45,14 +45,22 @@ def get_config_value_multi(config: Dict[str, Any], keys: Tuple[str, ...]) -> int
             return value
     return 0
 
-def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dict[str, Any], team: str, node_name: str) -> int:
+def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dict[str, Any], team: str, node: EasyDict) -> int:
     """GPUカウントを計算する"""
     if team in ["abeja-geniac", "alt-geniac"]:
         return num_nodes * 8
+    elif team == "ricoh-geniac":
+        num_nodes_str = node.description if node else "0Node"
+        num_gpus = node.runInfo.gpuCount if node.runInfo else 0
+        if num_nodes_str and num_nodes_str[-5].isdigit() and num_nodes_str.endswith("Node"):
+            num_nodes = int(num_nodes_str[-5])
+        else:
+            num_nodes = 0
+        return num_nodes * num_gpus
     elif gpu_key:
         num_gpus = get_config_value(config_dict, gpu_key)
         if num_gpus == 0:
-            logger.warning(f"num_gpus is 0 for {team} ({node_name}). Using num_nodes as GPU count.")
+            logger.warning(f"num_gpus is 0 for {team} ({node.name}). Using num_nodes as GPU count.")
             return num_nodes
         return num_nodes * num_gpus
     else:
@@ -77,10 +85,9 @@ def set_gpucount(node: EasyDict, team: str) -> int:
         num_nodes = get_config_value_multi(config_dict, node_key) if isinstance(node_key, tuple) else get_config_value(config_dict, node_key)
         
         if num_nodes == 0:
-            logger.warning(f"num_nodes is 0 for {team} ({node.name}). Using default GPU count.")
-            return default_gpu_count
+            logger.warning(f"num_nodes is 0 for {team} ({node.name}).")
         
-        gpu_count = calculate_gpu_count(num_nodes, gpu_key, config_dict, team, node.name)
+        gpu_count = calculate_gpu_count(num_nodes, gpu_key, config_dict, team, node)
         
         logger.info(f"Calculated GPU count for {team} ({node.name}): {gpu_count}")
         return gpu_count if gpu_count > 0 else default_gpu_count

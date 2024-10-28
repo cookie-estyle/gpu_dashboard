@@ -22,6 +22,7 @@ query GetGpuInfoForProject($project: String!, $entity: String!, $first: Int!, $c
                     state
                     tags
                     host
+                    description
                     runInfo {
                         gpuCount
                         gpu
