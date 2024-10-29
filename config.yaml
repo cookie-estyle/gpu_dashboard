@@ -81,7 +81,9 @@ companies:
       - nablas-geniac
     schedule:
       - date: "2024-10-25"
-        assigned_gpu_node: 4
+        assigned_gpu_node: 5
+      - date: "2025-02-01"
+        assigned_gpu_node: 3
       - date: "2025-05-01"
         assigned_gpu_node: 0
 
