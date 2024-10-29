@@ -76,7 +76,7 @@ def main():
     processed_df = uploader.process_and_upload_runs()
 
     # latestタグを削除
-    remove_latest_tags()
+    remove_latest_tags(date_range)
 
     # テーブルをアップデート
     calculator = GPUUsageCalculator(processed_df, date_range)
