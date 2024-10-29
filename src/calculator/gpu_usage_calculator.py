@@ -33,7 +33,10 @@ AGG_COLS = (
     pl.col("max_gpu_utilization").max(),
     pl.col("sum_gpu_memory").sum(),
     pl.col("max_gpu_memory").max(),
-    pl.col("run_id").n_unique().alias("n_runs"),
+    pl.coalesce(
+        pl.col("run_id").filter(pl.col("run_id").is_not_null()).n_unique(),
+        pl.lit(0)
+    ).cast(pl.Int64).alias("n_runs"),
     pl.col("assigned_gpu_node").first(),
 )
 
