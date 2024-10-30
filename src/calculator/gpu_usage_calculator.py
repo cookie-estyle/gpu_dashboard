@@ -33,7 +33,10 @@ AGG_COLS = (
     pl.col("max_gpu_utilization").max(),
     pl.col("sum_gpu_memory").sum(),
     pl.col("max_gpu_memory").max(),
-    pl.col("run_id").n_unique().alias("n_runs"),
+    pl.coalesce(
+        pl.col("run_id").filter(pl.col("run_id").is_not_null()).n_unique(),
+        pl.lit(0)
+    ).cast(pl.Int64).alias("n_runs"),
     pl.col("assigned_gpu_node").first(),
 )
 
@@ -311,6 +314,19 @@ class GPUUsageCalculator:
 
         for company_info in CONFIG.companies:
             company = company_info['company']
+            
+            is_gpu_assigned = False
+            for i, schedule in enumerate(company_info['schedule']):
+                schedule_start = dt.datetime.strptime(schedule['date'], "%Y-%m-%d").date()
+                schedule_end = dt.datetime.strptime(company_info['schedule'][i+1]['date'], "%Y-%m-%d").date() if i+1 < len(company_info['schedule']) else dt.date.max
+
+                if (schedule_start <= self.end_date and self.start_date < schedule_end) and schedule['assigned_gpu_node'] > 0:
+                    is_gpu_assigned = True
+                    break
+            
+            if not is_gpu_assigned:
+                continue
+
             gpu_daily_company_table = gpu_daily_table.filter(pl.col("企業名") == company)
             gpu_weekly_company_table = gpu_weekly_table.filter(pl.col("企業名") == company)
             gpu_summary_company_table = gpu_summary_table.filter(pl.col("company_name") == company)

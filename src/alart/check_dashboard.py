@@ -127,11 +127,11 @@ class DashboardChecker:
             df = table.get_dataframe()
 
             if 'GPU稼働率(%)' in df.columns:
-                gpu_usage = df['GPU稼働率(%)'].mean()
-                if gpu_usage <= 10:
+                latest_gpu_usage = df['GPU稼働率(%)'].iloc[0]
+                if latest_gpu_usage <= 10:
                     errors.append(UpdateError(
                         title=f"Low GPU Usage for {company}",
-                        text=f"Average GPU usage is {gpu_usage:.2f}%, which is below 10%"
+                        text=f"Latest GPU usage is {latest_gpu_usage:.2f}%, which is below 10%"
                     ))
         except Exception as e:
             errors.append(UpdateError(
