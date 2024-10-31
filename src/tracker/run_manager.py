@@ -358,11 +358,11 @@ class RunManager:
             pl.lit(run.gpu_count).cast(pl.Int64).alias("gpu_count"),
             pl.lit(run.host_name).cast(pl.String).alias("host_name"),
             pl.lit(LOGGED_AT).cast(pl.Datetime).alias("logged_at"),
+            pl.lit("exists").alias("run_exists"), 
         ]).select([
-            "date", "company_name", "project", "run_id", "tags",
-            "created_at", "updated_at", "state", "duration_hour", "gpu_count",
-            "average_gpu_utilization", "average_gpu_memory",
-            "max_gpu_utilization", "max_gpu_memory", "host_name", "logged_at"
+            "date", "company_name", "project", "run_id", "tags", "created_at", "updated_at", 
+            "state", "duration_hour", "gpu_count", "average_gpu_utilization", "average_gpu_memory",
+            "max_gpu_utilization", "max_gpu_memory", "host_name", "logged_at", "run_exists"
         ])
 
     def __calculate_daily_duration(self, start: dt.datetime, end: dt.datetime) -> pl.DataFrame:
@@ -393,7 +393,7 @@ class RunManager:
         return df
 
 if __name__ == "__main__":
-    date_range = ["2024-10-25", "2024-10-25"]
+    date_range = ["2024-10-30", "2024-10-30"]
     rm = RunManager(date_range)
     df = rm.fetch_runs()
     df.write_csv("dev/new_runs_df.csv")
