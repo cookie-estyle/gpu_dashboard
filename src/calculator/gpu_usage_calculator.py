@@ -4,74 +4,7 @@ import wandb
 from typing import List
 from src.calculator.blank_table import BlankTable
 from src.utils.config import CONFIG
-
-GPU_PER_NODE = 8
-HOURS_PER_DAY = 24
-MAX_PERCENT = 100
-
-def fillna_round(srs: pl.Series) -> pl.Series:
-    return srs.fill_null(0).fill_nan(0).round(1)
-
-TMP_COLS = (
-    pl.when(pl.col("average_gpu_utilization").is_not_null())
-    .then(pl.col("duration_hour"))
-    .otherwise(None)
-    .alias("metrics_hour"),
-    (pl.col("average_gpu_utilization") * pl.col("duration_hour")).alias(
-        "sum_gpu_utilization"
-    ),
-    (pl.col("average_gpu_memory") * pl.col("duration_hour")).alias("sum_gpu_memory"),
-)
-
-AGG_COLS = (
-    pl.col("assigned_gpu_node")
-    .first()
-    .mul(GPU_PER_NODE * HOURS_PER_DAY)
-    .alias("assigned_gpu_hour"),
-    pl.col("metrics_hour").sum().alias("total_metrics_hour"),
-    pl.col("sum_gpu_utilization").sum(),
-    pl.col("max_gpu_utilization").max(),
-    pl.col("sum_gpu_memory").sum(),
-    pl.col("max_gpu_memory").max(),
-    pl.coalesce(
-        pl.col("run_id").filter(pl.col("run_id").is_not_null()).n_unique(),
-        pl.lit(0)
-    ).cast(pl.Int64).alias("n_runs"),
-    pl.col("assigned_gpu_node").first(),
-)
-
-METRICS_COLS = (
-    pl.when(pl.col("total_gpu_hour") > pl.col("assigned_gpu_hour"))
-    .then(MAX_PERCENT)
-    .otherwise(
-        (pl.col("total_gpu_hour") / pl.col("assigned_gpu_hour")).mul(MAX_PERCENT)
-    )
-    .alias("utilization_rate"),
-    (pl.col("sum_gpu_utilization") / pl.col("total_metrics_hour")).alias(
-        "average_gpu_utilization"
-    ),
-    (pl.col("sum_gpu_memory") / pl.col("total_metrics_hour")).alias(
-        "average_gpu_memory"
-    ),
-)
-
-SELECT_COLS = (
-    pl.col("total_gpu_hour").pipe(fillna_round).alias("合計GPU使用時間(h)"),
-    pl.col("utilization_rate").pipe(fillna_round).alias("GPU稼働率(%)"),
-    pl.col("average_gpu_utilization")
-    .pipe(fillna_round)
-    .alias("平均GPUパフォーマンス率(%)"),
-    pl.col("max_gpu_utilization")
-    .pipe(fillna_round)
-    .alias("最大GPUパフォーマンス率(%)"),
-    pl.col("average_gpu_memory").pipe(fillna_round).alias("平均GPUメモリ利用率(%)"),
-    pl.col("max_gpu_memory").pipe(fillna_round).alias("最大GPUメモリ利用率(%)"),
-    pl.col("n_runs"),
-    pl.col("assigned_gpu_node"),
-    pl.col("assigned_gpu_hour"),
-    pl.col("_total_gpu_hour"),
-    pl.col("total_metrics_hour"),
-)
+from src.calculator.common import fillna_round, GPU_PER_NODE, HOURS_PER_DAY, TMP_COLS, AGG_COLS, METRICS_COLS, SELECT_COLS
 
 class GPUUsageCalculator:
     def __init__(self, all_runs_df: pl.DataFrame, date_range: List):

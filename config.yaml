@@ -13,6 +13,7 @@ dataset:
   entity: geniac-gpu
   project: gpu-dashboard2
   artifact_name: all_runs_data
+  deleted_runs_artifact_name: deleted_runs_data
 
 companies:
   ### ABEJA ###
@@ -114,16 +115,6 @@ companies:
     schedule:
       - date: "2024-10-25"
         assigned_gpu_node: 2
-      - date: "2025-04-24"
-        assigned_gpu_node: 0
-
-  ### カラクリ ###
-  - company: karakuri-geniac
-    teams:
-      - karakuri-geniac
-    schedule:
-      - date: "2024-10-25"
-        assigned_gpu_node: 24
       - date: "2025-04-24"
         assigned_gpu_node: 0
 

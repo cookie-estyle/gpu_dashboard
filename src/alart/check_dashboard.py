@@ -5,6 +5,7 @@ import pytz
 from easydict import EasyDict
 import wandb
 import yaml
+import polars as pl
 
 @dataclass
 class CompanySchedule:
@@ -39,6 +40,7 @@ class DashboardChecker:
             runs = self.get_runs()
             errors.extend(self.check_runs(companies, runs))
             errors.extend(self.check_artifacts(companies, runs))
+            errors.extend(self.check_deleted_runs())
         else:
             errors.append(UpdateError(title="No active companies", text="There are no companies currently active."))
         
@@ -139,6 +141,37 @@ class DashboardChecker:
                 text=str(e)
             ))
         return errors
+    
+    def check_deleted_runs(self) -> List[UpdateError]:
+        """削除が検知されたrunをチェックする"""
+        try:
+            artifact = self.api.artifact(f"{self.config.data.dashboard.entity}/{self.config.data.dashboard.project}/{self.config.data.dataset.deleted_runs_artifact_name}:latest")
+            deleted_runs_df = pl.read_csv(artifact.file())
+            
+            if not deleted_runs_df.is_empty():
+                # 会社ごとに削除されたランの数をカウント
+                company_counts = deleted_runs_df.group_by('company_name').agg(pl.count('run_id').alias('count'))
+                
+                # 削除されたランの総数
+                total_deleted = deleted_runs_df.shape[0]
+                
+                # 要約メッセージを作成
+                summary = f"Total {total_deleted} runs deleted across {company_counts.shape[0]} companies.\n"
+                for row in company_counts.iter_rows(named=True):
+                    summary += f"- {row['company_name']}: {row['count']} run(s)\n"
+                
+                return [UpdateError(
+                    title="Deleted Runs Summary",
+                    text=summary
+                )]
+            else:
+                print("No deleted runs detected.")
+                return []
+        except Exception as e:
+            return [UpdateError(
+                title="Error checking deleted runs",
+                text=f"An error occurred while checking for deleted runs: {str(e)}"
+            )]
     
     def handle_errors(self, errors: List[UpdateError]) -> None:
         if self.config.data.enable_alert:
