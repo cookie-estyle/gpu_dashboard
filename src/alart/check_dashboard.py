@@ -145,7 +145,7 @@ class DashboardChecker:
     def check_deleted_runs(self) -> List[UpdateError]:
         """削除が検知されたrunをチェックする"""
         try:
-            artifact = self.api.artifact(f"{self.config.data.dashboard.entity}/{self.config.data.dashboard.project}/deleted_runs_data:latest")
+            artifact = self.api.artifact(f"{self.config.data.dashboard.entity}/{self.config.data.dashboard.project}/{self.config.data.dataset.deleted_runs_artifact_name}:latest")
             deleted_runs_df = pl.read_csv(artifact.file())
             
             if not deleted_runs_df.is_empty():

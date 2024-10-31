@@ -13,6 +13,7 @@ dataset:
   entity: geniac-gpu
   project: gpu-dashboard2
   artifact_name: all_runs_data
+  deleted_runs_artifact_name: deleted_runs_data
 
 companies:
   ### ABEJA ###
