@@ -65,14 +65,13 @@ def run_existence_check():
             save_and_upload_artifact(df, csv_path, artifact_name, run)
             
             # 削除が検知されたrunの情報を保存し、アップロード
-            if deleted_runs:
-                deleted_runs_df = pl.DataFrame(deleted_runs)
-                deleted_runs_csv_path = f"{CONFIG.wandb_dir}/{deleted_runs_artifact_name}.csv"
-                deleted_runs_df.write_csv(deleted_runs_csv_path)
-                
-                deleted_runs_artifact = wandb.Artifact(name=deleted_runs_artifact_name, type="dataset")
-                deleted_runs_artifact.add_file(deleted_runs_csv_path)
-                run.log_artifact(deleted_runs_artifact)
+            deleted_runs_df = pl.DataFrame(deleted_runs) if deleted_runs else pl.DataFrame({"run_id": [], "company_name": [], "project": [], "created_at": []})
+            deleted_runs_csv_path = f"{CONFIG.wandb_dir}/{deleted_runs_artifact_name}.csv"
+            deleted_runs_df.write_csv(deleted_runs_csv_path)
+            
+            deleted_runs_artifact = wandb.Artifact(name=deleted_runs_artifact_name, type="dataset")
+            deleted_runs_artifact.add_file(deleted_runs_csv_path)
+            run.log_artifact(deleted_runs_artifact)
 
             print(f"Process completed. Updated CSV files have been uploaded as new artifacts.")
         except Exception as e:
