@@ -21,7 +21,7 @@ TEAM_CONFIGS = {
     "abeja-geniac": (("NUM_NODES", "trainer.num_nodes"), None),
     "alt-geniac": ("NNODES", None),
     "ricoh-geniac": ("NNODES", "NUM_GPUS"),
-    "aiinside-geniac": None,
+    "aiinside-geniac": ("nnodes", None),
     "future-geniac": ("world_size", None),
     "ubitus-geniac": None,
     "nablas-geniac": ("num_nodes", "num_gpus_per_node"),
@@ -47,7 +47,7 @@ def get_config_value_multi(config: Dict[str, Any], keys: Tuple[str, ...]) -> int
 
 def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dict[str, Any], team: str, node: EasyDict) -> int:
     """GPUカウントを計算する"""
-    if team in ["abeja-geniac", "alt-geniac"]:
+    if team in ["abeja-geniac", "alt-geniac", "aiinside-geniac"]:
         return num_nodes * 8
     elif team == "ricoh-geniac":
         num_nodes_str = node.description if node else "0Node"
