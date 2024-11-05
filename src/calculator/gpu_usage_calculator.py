@@ -10,7 +10,7 @@ from src.calculator.common import (fillna_round, OVERALL_SCHEMA, MONTHLY_SCHEMA,
 
 class GPUUsageCalculator:
     def __init__(self, all_runs_df: pl.DataFrame, date_range: List):
-        self.all_runs_df = all_runs_df
+        self.all_runs_df = all_runs_df.filter(pl.col("run_exists") != "deleted")
         self.start_date = dt.datetime.strptime(date_range[0], "%Y-%m-%d").date()
         self.end_date = dt.datetime.strptime(date_range[1], "%Y-%m-%d").date()
         self.bt = BlankTable(self.end_date)
@@ -287,7 +287,7 @@ class GPUUsageCalculator:
         start_date = self.end_date - dt.timedelta(days=(self.end_date.weekday() + 1) % 7)
         end_date = start_date + dt.timedelta(days=6)
         df_filtered = self.all_runs_df.filter(
-            (pl.col('date') >= start_date) & (pl.col('date') <= end_date)
+            (pl.col('date') >= start_date) & (pl.col('date') <= end_date) & (pl.col('run_exists') != "deleted")
         )
         
         summary = (
