@@ -3,6 +3,43 @@ import polars as pl
 def fillna_round(srs: pl.Series) -> pl.Series:
     return srs.fill_null(0).fill_nan(0).round(1)
 
+BASE_SCHEMA = {
+    "企業名": pl.Utf8,
+    "合計GPU使用時間(h)": pl.Float64,
+    "GPU稼働率(%)": pl.Float64,
+    "平均GPUパフォーマンス率(%)": pl.Float64,
+    "最大GPUパフォーマンス率(%)": pl.Float64,
+    "平均GPUメモリ利用率(%)": pl.Float64,
+    "最大GPUメモリ利用率(%)": pl.Float64,
+    "n_runs": pl.Int64,
+    "assigned_gpu_node": pl.Int64,
+    "assigned_gpu_hour": pl.Float64,
+    "_total_gpu_hour": pl.Float64,
+    "total_metrics_hour": pl.Float64,
+}
+
+OVERALL_SCHEMA = BASE_SCHEMA.copy()
+OVERALL_SCHEMA["日付"] = pl.Utf8
+
+MONTHLY_SCHEMA = BASE_SCHEMA.copy()
+MONTHLY_SCHEMA["年月"] = pl.Utf8
+
+WEEKLY_SCHEMA = BASE_SCHEMA.copy()
+WEEKLY_SCHEMA["週開始日"] = pl.Utf8
+
+DAILY_SCHEMA = BASE_SCHEMA.copy()
+DAILY_SCHEMA["日付"] = pl.Utf8
+
+SUMMARY_SCHEMA = {
+    "company_name": pl.Utf8,
+    "project": pl.Utf8,
+    "Total hours": pl.Float64,
+    "Total runs": pl.Int64,
+    "master_node_runs": pl.Int64,
+    "overlap_runs": pl.Int64,
+    "ignore_runs": pl.Int64,
+}
+
 GPU_PER_NODE = 8
 HOURS_PER_DAY = 24
 MAX_PERCENT = 100
