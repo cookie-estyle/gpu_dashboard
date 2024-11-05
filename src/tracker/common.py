@@ -28,6 +28,7 @@ query GetGpuInfoForProject($project: String!, $entity: String!, $first: Int!, $c
                         gpu
                     }
                     config
+                    summaryMetrics
                 }
             }
         }

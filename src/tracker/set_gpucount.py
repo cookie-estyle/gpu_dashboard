@@ -16,7 +16,7 @@ TEAM_CONFIGS = {
     "humanome-geniac": None,
     "eques-geniac": None,
     "karakuri-geniac": ("world_size", None),
-    "aidealab-geniac": None,
+    "aidealab-geniac": ("gpus", None),
     "aihub-geniac": None,
     "abeja-geniac": (("NUM_NODES", "trainer.num_nodes"), None),
     "alt-geniac": ("NNODES", None),
@@ -57,6 +57,10 @@ def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dic
         else:
             num_nodes = 0
         return num_nodes * num_gpus
+    elif team == "aidealab-geniac":
+        summary_dict = json.loads(node.summaryMetrics)
+        gpu_count = summary_dict.get("gpus", 0)
+        return gpu_count
     elif gpu_key:
         num_gpus = get_config_value(config_dict, gpu_key)
         if num_gpus == 0:
