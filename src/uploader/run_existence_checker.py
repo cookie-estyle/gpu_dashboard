@@ -45,6 +45,8 @@ class RunExistenceChecker:
         with tqdm(total=total_rows, desc="Checking runs") as pbar:
             def update_progress(row):
                 pbar.update(1)
+                if row['run_exists'] == 'deleted':
+                    return 'deleted'
                 new_status = self.check_run_existence(row)
                 if new_status == 'deleted' and row['run_exists'] != 'deleted':
                     deleted_runs.append(row)
@@ -55,7 +57,7 @@ class RunExistenceChecker:
                 .map_elements(update_progress)
                 .alias('run_exists')
             )
-        logging.info(f"Run existence check completed. {len(deleted_runs)} runs were found to be deleted.")
+        logging.info(f"Run existence check completed. {len(deleted_runs)} runs were found to be newly deleted.")
         return df, deleted_runs
 
     def save_and_upload_artifact(self, df, csv_path, artifact_name, run):
