@@ -353,6 +353,9 @@ class GPUUsageCalculator:
         )
         keys = ["company", "week_start"]
 
+        HOURS_PER_WEEK = 24 * 7
+        TOTAL_CPUS = 2704
+
         cpu_weekly_table = (
             self.bt.weekly_table.join(
                 all_runs_df_without_team.filter((pl.col("week_start") < target_week_start) & (pl.col("company") == "syntheticgestalt-geniac")),
@@ -361,21 +364,24 @@ class GPUUsageCalculator:
             )
             .group_by(keys)
             .agg(
-                pl.col("duration_hour").sum().alias("total_cpu_hour"),
-                pl.col("duration_hour").sum().alias("_total_cpu_hour"),
+                (pl.col("duration_hour") * pl.col("cpu_count")).sum().alias("total_cpu_hour"),
                 pl.col("run_id").n_unique().alias("n_runs"),
             )
             .with_columns(
                 pl.col("total_cpu_hour").pipe(fillna_round).alias("合計CPU使用時間(h)"),
-                pl.col("n_runs"),
-                pl.col("_total_cpu_hour"),
+                pl.lit(TOTAL_CPUS).alias("assigned_cpus"),
+                (pl.lit(TOTAL_CPUS) * HOURS_PER_WEEK).alias("assigned_cpu_hour"),
+                (pl.col("total_cpu_hour") / (pl.lit(TOTAL_CPUS) * HOURS_PER_WEEK) * 100).pipe(fillna_round).alias("CPU稼働率(%)"),
             )
             .select(
                 pl.col("company").alias("企業名"),
                 pl.col("week_start").dt.strftime("%Y-%m-%d").alias("週開始日"),
                 "合計CPU使用時間(h)",
+                "CPU稼働率(%)",
                 "n_runs",
-                "_total_cpu_hour",
+                pl.col("total_cpu_hour").alias("_total_cpu_hour"),
+                "assigned_cpus",
+                "assigned_cpu_hour",
             )
             .sort(["週開始日"], descending=True)
             .sort(["企業名"])
