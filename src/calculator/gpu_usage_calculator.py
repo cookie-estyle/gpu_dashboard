@@ -225,7 +225,7 @@ class GPUUsageCalculator:
             if gpu_overall_table.is_empty():
                 wandb.log({"warning": "No data available for overall, monthly, and weekly tables"})
 
-    def update_companies(self, gpu_daily_table: pl.DataFrame, gpu_weekly_table: pl.DataFrame, gpu_summary_table: pl.DataFrame):
+    def update_companies(self, gpu_daily_table: pl.DataFrame, gpu_weekly_table: pl.DataFrame, gpu_summary_table: pl.DataFrame, cpu_weekly_table: pl.DataFrame):
         limit = 30
 
         if gpu_daily_table.is_empty():
@@ -395,11 +395,11 @@ class GPUUsageCalculator:
         self.update_companies(gpu_daily_table, gpu_weekly_table, gpu_summary_table, cpu_weekly_table)
 
 if __name__ == "__main__":
-    df = pl.read_csv('dev/new_runs_df.csv', schema={"date": pl.Date, "company_name": pl.Utf8, "project": pl.Utf8, "run_id": pl.Utf8, "tags": pl.Utf8, 
+    df = pl.read_csv('dev/all_runs_data.csv', schema={"date": pl.Date, "company_name": pl.Utf8, "project": pl.Utf8, "run_id": pl.Utf8, "tags": pl.Utf8, 
                                                      "created_at": pl.Datetime, "updated_at": pl.Datetime, "state": pl.Utf8, "duration_hour": pl.Float64, 
-                                                     "gpu_count": pl.Int64, "average_gpu_utilization": pl.Float64, "average_gpu_memory": pl.Float64, 
+                                                     "gpu_count": pl.Int64, "cpu_count": pl.Int64, "average_gpu_utilization": pl.Float64, "average_gpu_memory": pl.Float64, 
                                                      "max_gpu_utilization": pl.Float64, "max_gpu_memory": pl.Float64, "host_name": pl.Utf8, "logged_at": pl.Datetime, "run_exists": pl.Utf8})
-    date_range = ["2024-11-03", "2024-11-09"]
+    date_range = ["2024-10-25", "2024-10-25"]
     guc = GPUUsageCalculator(df, date_range)
     # guc.update_tables()
     gpu_overall_table = guc.agg_overall()

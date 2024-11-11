@@ -135,6 +135,7 @@ class RunManager:
             if self.__is_run_valid(node, createdAt, updatedAt, start, end):
                 run_path = "/".join((team, project, node.name))
                 gpu_count = set_gpucount(node, team)
+                cpu_count = node.runInfo.cpuCount if node.runInfo else 0
                 run = Run(
                     run_path=run_path,
                     updated_at=updatedAt,
@@ -144,6 +145,7 @@ class RunManager:
                     host_name=node.host,
                     gpu_name=node.runInfo.gpu if node.runInfo else None,
                     gpu_count=gpu_count,
+                    cpu_count=cpu_count,
                 )
                 runs.append(run)
         self.total_valid_runs += len(runs)
@@ -356,13 +358,14 @@ class RunManager:
             pl.lit(run.updated_at).cast(pl.Datetime).alias("updated_at"),
             pl.lit(run.state).cast(pl.String).alias("state"),
             pl.lit(run.gpu_count).cast(pl.Int64).alias("gpu_count"),
+            pl.lit(run.cpu_count).cast(pl.Int64).alias("cpu_count"),
             pl.lit(run.host_name).cast(pl.String).alias("host_name"),
             pl.lit(LOGGED_AT).cast(pl.Datetime).alias("logged_at"),
             pl.lit("exists").alias("run_exists"), 
         ]).select([
-            "date", "company_name", "project", "run_id", "tags", "created_at", "updated_at", 
-            "state", "duration_hour", "gpu_count", "average_gpu_utilization", "average_gpu_memory",
-            "max_gpu_utilization", "max_gpu_memory", "host_name", "logged_at", "run_exists"
+            "date", "company_name", "project", "run_id", "tags", "created_at", "updated_at",
+            "state", "duration_hour", "gpu_count", "cpu_count", "average_gpu_utilization",
+            "average_gpu_memory", "max_gpu_utilization", "max_gpu_memory", "host_name", "logged_at", "run_exists"
         ])
 
     def __calculate_daily_duration(self, start: dt.datetime, end: dt.datetime) -> pl.DataFrame:
