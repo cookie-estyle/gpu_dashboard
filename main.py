@@ -61,9 +61,7 @@ def main():
     date_range = [start_date, end_date]
 
     # 他の環境変数の設定
-    os.environ["WANDB_CACHE_DIR"] = CONFIG.get('wandb_dir', '/tmp/wandb')
-    os.environ["WANDB_DATA_DIR"] = CONFIG.get('wandb_dir', '/tmp/wandb')
-    os.environ["WANDB_DIR"] = CONFIG.get('wandb_dir', '/tmp/wandb')
+    os.environ["WANDB_CACHE_DIR"] = os.environ["WANDB_DATA_DIR"] = os.environ["WANDB_DIR"] = CONFIG.get('wandb_dir', '/tmp')
 
     print(f"Fetching data from {start_date} to {end_date}")
 

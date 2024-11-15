@@ -2,6 +2,7 @@ from typing import Dict, Any, Tuple, Optional
 from easydict import EasyDict
 import json
 import logging
+import re
 
 # ロギングの設定
 logging.basicConfig(level=logging.INFO)
@@ -50,13 +51,13 @@ def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dic
     if team in ["abeja-geniac", "alt-geniac", "aiinside-geniac"]:
         return num_nodes * 8
     elif team == "ricoh-geniac":
-        num_nodes_str = node.description if node else "0Node"
-        num_gpus = node.runInfo.gpuCount if node.runInfo else 0
-        if num_nodes_str and num_nodes_str[-5].isdigit() and num_nodes_str.endswith("Node"):
-            num_nodes = int(num_nodes_str[-5])
+        run_name = node.description
+        match = re.match(r'(\d+)Node', run_name)
+        if match:
+            num_nodes = int(match.group(1))
         else:
-            num_nodes = 0
-        return num_nodes * num_gpus
+            num_nodes = 1
+        return num_nodes * 8
     elif team == "aidealab-geniac":
         summary_dict = json.loads(node.summaryMetrics)
         gpu_count = summary_dict.get("gpus", 0)

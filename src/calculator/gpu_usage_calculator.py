@@ -225,7 +225,7 @@ class GPUUsageCalculator:
             if gpu_overall_table.is_empty():
                 wandb.log({"warning": "No data available for overall, monthly, and weekly tables"})
 
-    def update_companies(self, gpu_daily_table: pl.DataFrame, gpu_weekly_table: pl.DataFrame, gpu_summary_table: pl.DataFrame):
+    def update_companies(self, gpu_daily_table: pl.DataFrame, gpu_weekly_table: pl.DataFrame, gpu_summary_table: pl.DataFrame, cpu_weekly_table: pl.DataFrame):
         limit = 30
 
         if gpu_daily_table.is_empty():
@@ -249,6 +249,9 @@ class GPUUsageCalculator:
             gpu_daily_company_table = gpu_daily_table.filter(pl.col("企業名") == company)
             gpu_weekly_company_table = gpu_weekly_table.filter(pl.col("企業名") == company)
             gpu_summary_company_table = gpu_summary_table.filter(pl.col("company_name") == company)
+            
+            # CPU週次テーブルの追加（syntheticgestalt-geniacの場合のみ）
+            cpu_weekly_company_table = cpu_weekly_table.filter(pl.col("企業名") == company) if company == "syntheticgestalt-geniac" else None
             
             with wandb.init(
                 entity=CONFIG.dashboard.entity,
@@ -278,6 +281,11 @@ class GPUUsageCalculator:
                         "company_summary": wandb.Table(data=gpu_summary_company_table.to_pandas()),
                     }
 
+                # CPU週次テーブルの追加（syntheticgestalt-geniacの場合のみ）
+                if company == "syntheticgestalt-geniac" and cpu_weekly_company_table is not None and not cpu_weekly_company_table.is_empty():
+                    data_to_log["company_weekly_cpu_usage"] = wandb.Table(data=cpu_weekly_company_table.to_pandas())
+                    data_to_log[f"company_weekly_cpu_usage_within_{limit//7}weeks"] = wandb.Table(data=cpu_weekly_company_table.head(limit//7).to_pandas())
+                
                 wandb.log(data_to_log)
 
     def agg_summary(self) -> pl.DataFrame:
@@ -334,19 +342,68 @@ class GPUUsageCalculator:
         
         return summary
 
+    def agg_cpu_weekly(self) -> pl.DataFrame:
+        if self.all_runs_df.is_empty():
+            return pl.DataFrame(schema=WEEKLY_SCHEMA)
+        
+        target_week_start = self.end_date - dt.timedelta(days=self.end_date.weekday())
+        
+        all_runs_df_without_team = self.add_team().with_columns(
+            (pl.col("date") - pl.duration(days=(pl.col("date").dt.weekday() % 7))).alias("week_start")
+        )
+        keys = ["company", "week_start"]
+
+        HOURS_PER_WEEK = 24 * 7
+        TOTAL_CPUS = 2704
+
+        cpu_weekly_table = (
+            self.bt.weekly_table.join(
+                all_runs_df_without_team.filter((pl.col("week_start") < target_week_start) & (pl.col("company") == "syntheticgestalt-geniac")),
+                on=keys,
+                how="left",
+            )
+            .group_by(keys)
+            .agg(
+                (pl.col("duration_hour") * pl.col("cpu_count")).sum().alias("total_cpu_hour"),
+                pl.col("run_id").n_unique().alias("n_runs"),
+            )
+            .with_columns(
+                pl.col("total_cpu_hour").pipe(fillna_round).alias("合計CPU使用時間(h)"),
+                pl.lit(TOTAL_CPUS).alias("assigned_cpus"),
+                (pl.lit(TOTAL_CPUS) * HOURS_PER_WEEK).alias("assigned_cpu_hour"),
+                (pl.col("total_cpu_hour") / (pl.lit(TOTAL_CPUS) * HOURS_PER_WEEK) * 100).pipe(fillna_round).alias("CPU稼働率(%)"),
+            )
+            .select(
+                pl.col("company").alias("企業名"),
+                pl.col("week_start").dt.strftime("%Y-%m-%d").alias("週開始日"),
+                "合計CPU使用時間(h)",
+                "CPU稼働率(%)",
+                "n_runs",
+                pl.col("total_cpu_hour").alias("_total_cpu_hour"),
+                "assigned_cpus",
+                "assigned_cpu_hour",
+            )
+            .sort(["週開始日"], descending=True)
+            .sort(["企業名"])
+            .filter(pl.col("企業名") == "syntheticgestalt-geniac")
+        )
+
+        return cpu_weekly_table
+
     def update_tables(self):
         gpu_overall_table = self.agg_overall()
         gpu_monthly_table = self.agg_monthly()
         gpu_weekly_table = self.agg_weekly()
         gpu_daily_table = self.agg_daily()
         gpu_summary_table = self.agg_summary()
+        cpu_weekly_table = self.agg_cpu_weekly()
         self.update_overall(gpu_overall_table, gpu_monthly_table, gpu_weekly_table, gpu_daily_table)
-        self.update_companies(gpu_daily_table, gpu_weekly_table, gpu_summary_table)
+        self.update_companies(gpu_daily_table, gpu_weekly_table, gpu_summary_table, cpu_weekly_table)
 
 if __name__ == "__main__":
-    df = pl.read_csv('dev/new_runs_df.csv', schema={"date": pl.Date, "company_name": pl.Utf8, "project": pl.Utf8, "run_id": pl.Utf8, "tags": pl.Utf8, 
+    df = pl.read_csv('dev/all_runs_data.csv', schema={"date": pl.Date, "company_name": pl.Utf8, "project": pl.Utf8, "run_id": pl.Utf8, "tags": pl.Utf8, 
                                                      "created_at": pl.Datetime, "updated_at": pl.Datetime, "state": pl.Utf8, "duration_hour": pl.Float64, 
-                                                     "gpu_count": pl.Int64, "average_gpu_utilization": pl.Float64, "average_gpu_memory": pl.Float64, 
+                                                     "gpu_count": pl.Int64, "cpu_count": pl.Int64, "average_gpu_utilization": pl.Float64, "average_gpu_memory": pl.Float64, 
                                                      "max_gpu_utilization": pl.Float64, "max_gpu_memory": pl.Float64, "host_name": pl.Utf8, "logged_at": pl.Datetime, "run_exists": pl.Utf8})
     date_range = ["2024-10-25", "2024-10-25"]
     guc = GPUUsageCalculator(df, date_range)
@@ -356,8 +413,10 @@ if __name__ == "__main__":
     gpu_weekly_table = guc.agg_weekly()
     gpu_daily_table = guc.agg_daily()
     gpu_summary_table = guc.agg_summary()
+    cpu_weekly_table = guc.agg_cpu_weekly()
     gpu_overall_table.write_csv("dev/gpu_overall_table.csv")
     gpu_monthly_table.write_csv("dev/gpu_monthly_table.csv")
     gpu_weekly_table.write_csv("dev/gpu_weekly_table.csv")
     gpu_daily_table.write_csv("dev/gpu_daily_table.csv")
     gpu_summary_table.write_csv("dev/gpu_summary_table.csv")
+    cpu_weekly_table.write_csv("dev/cpu_weekly_table.csv")
