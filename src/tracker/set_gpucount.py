@@ -10,23 +10,23 @@ logger = logging.getLogger(__name__)
 
 # 定数
 TEAM_CONFIGS = {
-    "stockmark-geniac": None,
-    "datagrid-geniac": None,
-    "kotoba-geniac": ("num_nodes", "num_gpus"),
-    "syntheticgestalt-geniac": None,
-    "humanome-geniac": None,
-    "eques-geniac": None,
-    "karakuri-geniac": ("world_size", None),
+    "abeja-geniac": (("NUM_NODES", "trainer.num_nodes"), None),
     "aidealab-geniac": ("gpus", None),
     "aihub-geniac": None,
-    "abeja-geniac": (("NUM_NODES", "trainer.num_nodes"), None),
-    "alt-geniac": ("NNODES", None),
-    "ricoh-geniac": ("NNODES", "NUM_GPUS"),
     "aiinside-geniac": ("nnodes", None),
+    "alt-geniac": ("NNODES", None),
+    "datagrid-geniac": None,
+    "eques-geniac": None,
     "future-geniac": ("world_size", None),
-    "ubitus-geniac": None,
-    "nablas-geniac": ("num_nodes", "num_gpus_per_node"),
+    "humanome-geniac": None,
     "jamstec-geniac": None,
+    "karakuri-geniac": ("world_size", None),
+    "kotoba-geniac": ("num_nodes", "num_gpus"),
+    "nablas-geniac": ("num_nodes", "num_gpus_per_node"),
+    "ricoh-geniac": ("NNODES", "NUM_GPUS"),
+    "stockmark-geniac": None,
+    "syntheticgestalt-geniac": None,
+    "ubitus-geniac": None
 }
 
 def get_config_value(config: Dict[str, Any], key: str) -> int:
