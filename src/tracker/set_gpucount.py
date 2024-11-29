@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 TEAM_CONFIGS = {
     "abeja-geniac": (("NUM_NODES", "trainer.num_nodes"), None),
     "aidealab-geniac": ("gpus", None),
-    "aihub-geniac": None,
+    "aihub-geniac": ("nnodes", None),
     "aiinside-geniac": ("nnodes", None),
     "alt-geniac": ("NNODES", None),
     "datagrid-geniac": None,
@@ -62,6 +62,14 @@ def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dic
         summary_dict = json.loads(node.summaryMetrics)
         gpu_count = summary_dict.get("gpus", 0)
         return gpu_count
+    elif team =="aihub-geniac":
+        num_nodes_str = node.description if node else "0Node"
+        num_gpus = node.runInfo.gpuCount if node.runInfo else 0
+        if num_nodes_str and num_nodes_str[-5].isdigit() and num_nodes_str.endswith("Node"):
+            num_nodes = int(num_nodes_str[-5])
+        else:
+            num_nodes = 0
+        return num_nodes * num_gpus
     elif gpu_key:
         num_gpus = get_config_value(config_dict, gpu_key)
         if num_gpus == 0:
