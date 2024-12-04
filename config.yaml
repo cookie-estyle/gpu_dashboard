@@ -1,7 +1,7 @@
 enable_alert: true
 ignore_tags: ["other_gpu", "others_gpu"]  # 増えるようだったらfnmatchで対応する
 wandb_dir: /tmp
-max_workers: 1
+max_workers: 2
 
 dashboard:
   entity: geniac-gpu
