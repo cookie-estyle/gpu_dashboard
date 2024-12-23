@@ -171,6 +171,6 @@ companies:
       - ricoh-geniac
     schedule:
       - date: "2024-10-25"
-        assigned_gpu_node: 8
+        assigned_gpu_node: 5
       - date: "2025-04-24"
         assigned_gpu_node: 0
