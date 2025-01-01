@@ -83,17 +83,51 @@ class DashboardChecker:
                 company_tags = [r for r in run.tags if r != tag_for_latest]
                 if len(company_tags) == 1 and company_tags[0] in companies:
                     companies_found.add(company_tags[0])
-                    self.check_target_date(run.name, errors)
+                    self.check_target_date(run.name, run.tags, errors)
         
         self.check_missing_companies(companies, companies_found, errors)
         self.check_extra_companies(companies, companies_found, errors)
         
         return errors
 
-    def check_target_date(self, run_name: str, errors: List[UpdateError]) -> None:
+    def check_target_date(self, run_name: str, run_tags: List[str], errors: List[UpdateError]) -> None:
         target_date_str_found = run_name.split("_")[-1]
-        if target_date_str_found != self.config.TARGET_DATE_STR:
-            errors.append(UpdateError(title="Error of target date", text=f"Expected: {self.config.TARGET_DATE_STR}, Found: {run_name}"))
+        target_date = dt.datetime.strptime(target_date_str_found, "%Y-%m-%d").date()
+        company_tag = [tag for tag in run_tags if tag != self.config.data.dashboard.tag_for_latest][0]
+
+        company_data = next(
+            (comp for comp in self.config.data.companies if comp.company == company_tag),
+            None
+        )
+
+        if company_data:
+            current_gpu = 0
+            last_active_date = None
+            
+            for i, schedule in enumerate(company_data.schedule):
+                schedule_date = dt.datetime.strptime(schedule.date, "%Y-%m-%d").date()
+                
+                if schedule_date <= self.config.TARGET_DATE:
+                    current_gpu = schedule.assigned_gpu_node
+                    
+                    if current_gpu > 0 and i + 1 < len(company_data.schedule):
+                        next_schedule = company_data.schedule[i + 1]
+                        next_date = dt.datetime.strptime(next_schedule.date, "%Y-%m-%d").date()
+                        if next_schedule.assigned_gpu_node == 0:
+                            last_active_date = next_date - dt.timedelta(days=1)
+
+            if current_gpu == 0 and last_active_date:
+                if target_date != last_active_date:
+                    errors.append(UpdateError(
+                        title="Error of target date",
+                        text=f"Company {company_tag}: Expected last active date: {last_active_date.strftime('%Y-%m-%d')}, Found: {target_date_str_found}"
+                    ))
+            else:
+                if target_date_str_found != self.config.TARGET_DATE_STR:
+                    errors.append(UpdateError(
+                        title="Error of target date",
+                        text=f"Company {company_tag}: Expected: {self.config.TARGET_DATE_STR}, Found: {target_date_str_found}"
+                    ))
 
     def check_missing_companies(self, expected: Set[str], found: Set[str], errors: List[UpdateError]) -> None:
         missing = expected - found

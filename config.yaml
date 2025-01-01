@@ -1,5 +1,5 @@
 enable_alert: true
-ignore_tags: ["other_gpu", "others_gpu"]  # 増えるようだったらfnmatchで対応する
+ignore_tags: ["other_gpu", "others_gpu"]
 wandb_dir: /tmp
 max_workers: 2
 
