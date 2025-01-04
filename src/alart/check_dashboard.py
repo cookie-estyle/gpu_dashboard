@@ -62,10 +62,17 @@ class DashboardChecker:
 
     def get_in_progress_companies(self) -> Set[str]:
         """進行中の企業を取得する"""
-        companies = {
-            company.company for company in self.get_company_schedule()
-            if company.start_date <= self.config.TARGET_DATE < company.end_date
-        }
+        companies = set()
+        for company, data in self.company_data.items():
+            current_gpu = 0
+            for schedule in data.schedule:
+                schedule_date = dt.datetime.strptime(schedule.date, "%Y-%m-%d").date()
+                if schedule_date <= self.config.TARGET_DATE:
+                    current_gpu = schedule.assigned_gpu_node
+            
+            if current_gpu > 0:
+                companies.add(company)
+        
         if companies:
             companies.add("overall")
         return companies
