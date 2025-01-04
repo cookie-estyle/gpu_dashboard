@@ -154,25 +154,35 @@ class DashboardChecker:
 
     def check_company_artifact(self, company: str, run: Any) -> List[UpdateError]:
         errors = []
-        try:
-            artifact_name = f"run-{run.id}-company_daily_gpu_usage:v0"
-            artifact = self.api.artifact(f"{self.config.data.dashboard.entity}/{self.config.data.dashboard.project}/{artifact_name}")
-            
-            table = artifact.get('company_daily_gpu_usage')
-            df = table.get_dataframe()
+        company_data = self.company_data.get(company)
 
-            if 'GPU稼働率(%)' in df.columns:
-                latest_gpu_usage = df['GPU稼働率(%)'].iloc[0]
-                if latest_gpu_usage <= 10:
+        if company_data:
+            current_gpu = 0
+            for schedule in company_data.schedule:
+                schedule_date = dt.datetime.strptime(schedule.date, "%Y-%m-%d").date()
+                if schedule_date <= self.config.TARGET_DATE:
+                    current_gpu = schedule.assigned_gpu_node
+
+            if current_gpu > 0:
+                try:
+                    artifact_name = f"run-{run.id}-company_daily_gpu_usage:v0"
+                    artifact = self.api.artifact(f"{self.config.data.dashboard.entity}/{self.config.data.dashboard.project}/{artifact_name}")
+                    
+                    table = artifact.get('company_daily_gpu_usage')
+                    df = table.get_dataframe()
+
+                    if 'GPU稼働率(%)' in df.columns:
+                        latest_gpu_usage = df['GPU稼働率(%)'].iloc[0]
+                        if latest_gpu_usage <= 10:
+                            errors.append(UpdateError(
+                                title=f"Low GPU Usage for {company}",
+                                text=f"Latest GPU usage is {latest_gpu_usage:.2f}%, which is below 10%"
+                            ))
+                except Exception as e:
                     errors.append(UpdateError(
-                        title=f"Low GPU Usage for {company}",
-                        text=f"Latest GPU usage is {latest_gpu_usage:.2f}%, which is below 10%"
+                        title=f"Error checking artifacts for {company}",
+                        text=str(e)
                     ))
-        except Exception as e:
-            errors.append(UpdateError(
-                title=f"Error checking artifacts for {company}",
-                text=str(e)
-            ))
         return errors
     
     def check_deleted_runs(self) -> List[UpdateError]:
