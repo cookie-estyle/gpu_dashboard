@@ -30,6 +30,9 @@ class DashboardChecker:
     def __init__(self, config: Config):
         self.config = config
         self.api = wandb.Api()
+        self.company_data = {
+            comp.company: comp for comp in self.config.data.companies
+        }
 
     def check_dashboard(self) -> None:
         """ダッシュボードの健全性をチェックする"""
@@ -94,11 +97,7 @@ class DashboardChecker:
         target_date_str_found = run_name.split("_")[-1]
         target_date = dt.datetime.strptime(target_date_str_found, "%Y-%m-%d").date()
         company_tag = [tag for tag in run_tags if tag != self.config.data.dashboard.tag_for_latest][0]
-
-        company_data = next(
-            (comp for comp in self.config.data.companies if comp.company == company_tag),
-            None
-        )
+        company_data = self.company_data.get(company_tag)
 
         if company_data:
             current_gpu = 0
