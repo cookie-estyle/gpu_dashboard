@@ -138,10 +138,8 @@ companies:
     schedule:
       - date: "2024-10-25"
         assigned_gpu_node: 8
-      - date: "2024-12-25"
-        assigned_gpu_node: 0
-      - date: "2025-01-25"
-        assigned_gpu_node: 16
+      - date: "2025-01-24"
+        assigned_gpu_node: 24
       - date: "2025-04-25"
         assigned_gpu_node: 0
 
