@@ -1,7 +1,7 @@
 enable_alert: true
-ignore_tags: ["other_gpu", "others_gpu"]  # 増えるようだったらfnmatchで対応する
+ignore_tags: ["other_gpu", "others_gpu"]
 wandb_dir: /tmp
-max_workers: 1
+max_workers: 2
 
 dashboard:
   entity: geniac-gpu
@@ -42,7 +42,9 @@ companies:
       - aihub-geniac
     schedule:
       - date: "2024-10-25"
-        assigned_gpu_node: 5
+        assigned_gpu_node: 2
+      - date: "2025-01-31"
+        assigned_gpu_node: 8
       - date: "2025-04-24"
         assigned_gpu_node: 0
 
@@ -135,8 +137,10 @@ companies:
       - datagrid-geniac
     schedule:
       - date: "2024-10-25"
-        assigned_gpu_node: 16
-      - date: "2025-05-01"
+        assigned_gpu_node: 8
+      - date: "2025-01-24"
+        assigned_gpu_node: 24
+      - date: "2025-04-25"
         assigned_gpu_node: 0
 
   ### ヒューマノーム研究所 ###
@@ -165,6 +169,6 @@ companies:
       - ricoh-geniac
     schedule:
       - date: "2024-10-25"
-        assigned_gpu_node: 8
+        assigned_gpu_node: 5
       - date: "2025-04-24"
         assigned_gpu_node: 0

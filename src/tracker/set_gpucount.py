@@ -10,23 +10,23 @@ logger = logging.getLogger(__name__)
 
 # 定数
 TEAM_CONFIGS = {
-    "stockmark-geniac": None,
-    "datagrid-geniac": None,
-    "kotoba-geniac": ("num_nodes", "num_gpus"),
-    "syntheticgestalt-geniac": None,
-    "humanome-geniac": None,
-    "eques-geniac": None,
-    "karakuri-geniac": ("world_size", None),
-    "aidealab-geniac": ("gpus", None),
-    "aihub-geniac": None,
     "abeja-geniac": (("NUM_NODES", "trainer.num_nodes"), None),
-    "alt-geniac": ("NNODES", None),
-    "ricoh-geniac": ("NNODES", "NUM_GPUS"),
+    "aidealab-geniac": ("gpus", None),
+    "aihub-geniac": ("nnodes", None),
     "aiinside-geniac": ("nnodes", None),
+    "alt-geniac": ("NNODES", None),
+    "datagrid-geniac": None,
+    "eques-geniac": None,
     "future-geniac": ("world_size", None),
-    "ubitus-geniac": None,
-    "nablas-geniac": ("num_nodes", "num_gpus_per_node"),
+    "humanome-geniac": None,
     "jamstec-geniac": None,
+    "karakuri-geniac": ("world_size", None),
+    "kotoba-geniac": ("num_nodes", "num_gpus"),
+    "nablas-geniac": ("num_nodes", "num_gpus_per_node"),
+    "ricoh-geniac": ("NNODES", "NUM_GPUS"),
+    "stockmark-geniac": None,
+    "syntheticgestalt-geniac": None,
+    "ubitus-geniac": None
 }
 
 def get_config_value(config: Dict[str, Any], key: str) -> int:
@@ -62,6 +62,14 @@ def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dic
         summary_dict = json.loads(node.summaryMetrics)
         gpu_count = summary_dict.get("gpus", 0)
         return gpu_count
+    elif team =="aihub-geniac":
+        num_nodes_str = node.description if node else "0Node"
+        num_gpus = node.runInfo.gpuCount if node.runInfo else 0
+        if num_nodes_str and num_nodes_str[-5].isdigit() and num_nodes_str.endswith("Node"):
+            num_nodes = int(num_nodes_str[-5])
+        else:
+            num_nodes = 0
+        return num_nodes * num_gpus
     elif gpu_key:
         num_gpus = get_config_value(config_dict, gpu_key)
         if num_gpus == 0:

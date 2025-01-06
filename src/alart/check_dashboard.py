@@ -30,6 +30,9 @@ class DashboardChecker:
     def __init__(self, config: Config):
         self.config = config
         self.api = wandb.Api()
+        self.company_data = {
+            comp.company: comp for comp in self.config.data.companies
+        }
 
     def check_dashboard(self) -> None:
         """ダッシュボードの健全性をチェックする"""
@@ -59,10 +62,17 @@ class DashboardChecker:
 
     def get_in_progress_companies(self) -> Set[str]:
         """進行中の企業を取得する"""
-        companies = {
-            company.company for company in self.get_company_schedule()
-            if company.start_date <= self.config.TARGET_DATE < company.end_date
-        }
+        companies = set()
+        for company, data in self.company_data.items():
+            current_gpu = 0
+            for schedule in data.schedule:
+                schedule_date = dt.datetime.strptime(schedule.date, "%Y-%m-%d").date()
+                if schedule_date <= self.config.TARGET_DATE:
+                    current_gpu = schedule.assigned_gpu_node
+            
+            if current_gpu > 0:
+                companies.add(company)
+        
         if companies:
             companies.add("overall")
         return companies
@@ -83,17 +93,47 @@ class DashboardChecker:
                 company_tags = [r for r in run.tags if r != tag_for_latest]
                 if len(company_tags) == 1 and company_tags[0] in companies:
                     companies_found.add(company_tags[0])
-                    self.check_target_date(run.name, errors)
+                    self.check_target_date(run.name, run.tags, errors)
         
         self.check_missing_companies(companies, companies_found, errors)
         self.check_extra_companies(companies, companies_found, errors)
         
         return errors
 
-    def check_target_date(self, run_name: str, errors: List[UpdateError]) -> None:
+    def check_target_date(self, run_name: str, run_tags: List[str], errors: List[UpdateError]) -> None:
         target_date_str_found = run_name.split("_")[-1]
-        if target_date_str_found != self.config.TARGET_DATE_STR:
-            errors.append(UpdateError(title="Error of target date", text=f"Expected: {self.config.TARGET_DATE_STR}, Found: {run_name}"))
+        target_date = dt.datetime.strptime(target_date_str_found, "%Y-%m-%d").date()
+        company_tag = [tag for tag in run_tags if tag != self.config.data.dashboard.tag_for_latest][0]
+        company_data = self.company_data.get(company_tag)
+
+        if company_data:
+            current_gpu = 0
+            last_active_date = None
+            
+            for i, schedule in enumerate(company_data.schedule):
+                schedule_date = dt.datetime.strptime(schedule.date, "%Y-%m-%d").date()
+                
+                if schedule_date <= self.config.TARGET_DATE:
+                    current_gpu = schedule.assigned_gpu_node
+                    
+                    if current_gpu > 0 and i + 1 < len(company_data.schedule):
+                        next_schedule = company_data.schedule[i + 1]
+                        next_date = dt.datetime.strptime(next_schedule.date, "%Y-%m-%d").date()
+                        if next_schedule.assigned_gpu_node == 0:
+                            last_active_date = next_date - dt.timedelta(days=1)
+
+            if current_gpu == 0 and last_active_date:
+                if target_date != last_active_date:
+                    errors.append(UpdateError(
+                        title="Error of target date",
+                        text=f"Company {company_tag}: Expected last active date: {last_active_date.strftime('%Y-%m-%d')}, Found: {target_date_str_found}"
+                    ))
+            else:
+                if target_date_str_found != self.config.TARGET_DATE_STR:
+                    errors.append(UpdateError(
+                        title="Error of target date",
+                        text=f"Company {company_tag}: Expected: {self.config.TARGET_DATE_STR}, Found: {target_date_str_found}"
+                    ))
 
     def check_missing_companies(self, expected: Set[str], found: Set[str], errors: List[UpdateError]) -> None:
         missing = expected - found
@@ -121,25 +161,35 @@ class DashboardChecker:
 
     def check_company_artifact(self, company: str, run: Any) -> List[UpdateError]:
         errors = []
-        try:
-            artifact_name = f"run-{run.id}-company_daily_gpu_usage:v0"
-            artifact = self.api.artifact(f"{self.config.data.dashboard.entity}/{self.config.data.dashboard.project}/{artifact_name}")
-            
-            table = artifact.get('company_daily_gpu_usage')
-            df = table.get_dataframe()
+        company_data = self.company_data.get(company)
 
-            if 'GPU稼働率(%)' in df.columns:
-                latest_gpu_usage = df['GPU稼働率(%)'].iloc[0]
-                if latest_gpu_usage <= 10:
+        if company_data:
+            current_gpu = 0
+            for schedule in company_data.schedule:
+                schedule_date = dt.datetime.strptime(schedule.date, "%Y-%m-%d").date()
+                if schedule_date <= self.config.TARGET_DATE:
+                    current_gpu = schedule.assigned_gpu_node
+
+            if current_gpu > 0:
+                try:
+                    artifact_name = f"run-{run.id}-company_daily_gpu_usage:v0"
+                    artifact = self.api.artifact(f"{self.config.data.dashboard.entity}/{self.config.data.dashboard.project}/{artifact_name}")
+                    
+                    table = artifact.get('company_daily_gpu_usage')
+                    df = table.get_dataframe()
+
+                    if 'GPU稼働率(%)' in df.columns:
+                        latest_gpu_usage = df['GPU稼働率(%)'].iloc[0]
+                        if latest_gpu_usage <= 10:
+                            errors.append(UpdateError(
+                                title=f"Low GPU Usage for {company}",
+                                text=f"Latest GPU usage is {latest_gpu_usage:.2f}%, which is below 10%"
+                            ))
+                except Exception as e:
                     errors.append(UpdateError(
-                        title=f"Low GPU Usage for {company}",
-                        text=f"Latest GPU usage is {latest_gpu_usage:.2f}%, which is below 10%"
+                        title=f"Error checking artifacts for {company}",
+                        text=str(e)
                     ))
-        except Exception as e:
-            errors.append(UpdateError(
-                title=f"Error checking artifacts for {company}",
-                text=str(e)
-            ))
         return errors
     
     def check_deleted_runs(self) -> List[UpdateError]:
