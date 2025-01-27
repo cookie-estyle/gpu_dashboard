@@ -55,11 +55,18 @@ class RunManager:
         self.total_valid_runs = 0
     
     def fetch_runs(self):
-        with wandb.init(
-            entity=CONFIG.dashboard.entity,
-            project=CONFIG.dashboard.project,
-            name=f"Fetch Runs",
-        ) as run:
+        if self.test_mode == False:
+            with wandb.init(
+                entity=CONFIG.dashboard.entity,
+                project=CONFIG.dashboard.project,
+                name=f"Fetch Runs",
+            ) as run:
+                self.__get_projects()
+                self.__get_runs()
+                self.__get_metrics()
+                combined_df = self.__combined_run_df()
+                return combined_df
+        else:
             self.__get_projects()
             self.__get_runs()
             self.__get_metrics()
@@ -402,6 +409,6 @@ class RunManager:
 
 if __name__ == "__main__":
     date_range = ["2024-10-25", "2024-10-25"]
-    rm = RunManager(date_range)
+    rm = RunManager(date_range, True)
     df = rm.fetch_runs()
     df.write_csv("dev/new_runs_df.csv")
