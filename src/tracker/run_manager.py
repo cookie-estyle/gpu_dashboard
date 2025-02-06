@@ -50,7 +50,7 @@ class RunManager:
         self.team_configs = parse_configs(CONFIG)
         self.start_date = dt.datetime.strptime(date_range[0], "%Y-%m-%d").date()
         self.end_date = dt.datetime.strptime(date_range[1], "%Y-%m-%d").date()
-        self.api = wandb.Api(timeout=60)
+        self.api = wandb.Api(timeout=30)
         self.test_mode = test_mode
         self.total_valid_runs = 0
     
