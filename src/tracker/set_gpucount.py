@@ -1,12 +1,7 @@
 from typing import Dict, Any, Tuple, Optional
 from easydict import EasyDict
 import json
-import logging
 import re
-
-# ロギングの設定
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # 定数
 TEAM_CONFIGS = {
@@ -35,7 +30,7 @@ def get_config_value(config: Dict[str, Any], key: str) -> int:
     try:
         return int(value)
     except (ValueError, TypeError):
-        logger.warning(f"Could not convert '{value}' to int. Using 0 instead.")
+        print(f"Could not convert '{value}' to int. Using 0 instead.")
         return 0
 
 def get_config_value_multi(config: Dict[str, Any], keys: Tuple[str, ...]) -> int:
@@ -73,7 +68,7 @@ def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dic
     elif gpu_key:
         num_gpus = get_config_value(config_dict, gpu_key)
         if num_gpus == 0:
-            logger.warning(f"num_gpus is 0 for {team} ({node.name}). Using num_nodes as GPU count.")
+            print(f"num_gpus is 0 for {team} ({node.name}). Using num_nodes as GPU count.")
             return num_nodes
         return num_nodes * num_gpus
     else:
@@ -84,7 +79,7 @@ def set_gpucount(node: EasyDict, team: str) -> int:
     default_gpu_count = node.runInfo.gpuCount if node.runInfo else 0
     
     if team not in TEAM_CONFIGS:
-        logger.warning(f"Unknown team {team}. Using default GPU count.")
+        print(f"Unknown team {team}. Using default GPU count.")
         return default_gpu_count
 
     config_dict = json.loads(node.config)
@@ -98,13 +93,13 @@ def set_gpucount(node: EasyDict, team: str) -> int:
         num_nodes = get_config_value_multi(config_dict, node_key) if isinstance(node_key, tuple) else get_config_value(config_dict, node_key)
         
         if num_nodes == 0:
-            logger.warning(f"num_nodes is 0 for {team} ({node.name}).")
+            print(f"num_nodes is 0 for {team} ({node.name}).")
         
         gpu_count = calculate_gpu_count(num_nodes, gpu_key, config_dict, team, node)
         
-        logger.info(f"Calculated GPU count for {team} ({node.name}): {gpu_count}")
+        print(f"Calculated GPU count for {team} ({node.name}): {gpu_count}")
         return gpu_count if gpu_count > 0 else default_gpu_count
     
     except Exception as e:
-        logger.error(f"Error calculating GPU count for {team} ({node.name}): {str(e)}")
+        print(f"Error calculating GPU count for {team} ({node.name}): {str(e)}")
         return default_gpu_count
