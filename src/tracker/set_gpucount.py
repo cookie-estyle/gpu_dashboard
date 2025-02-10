@@ -5,7 +5,7 @@ import re
 
 # 定数
 TEAM_CONFIGS = {
-    "abeja-geniac": (("NUM_NODES", "trainer.num_nodes"), None),
+    "abeja-geniac": (("NUM_NODES", "trainer"), None),
     "aidealab-geniac": ("gpus", None),
     "aihub-geniac": ("nnodes", None),
     "aiinside-geniac": ("nnodes", None),
@@ -26,7 +26,26 @@ TEAM_CONFIGS = {
 
 def get_config_value(config: Dict[str, Any], key: str) -> int:
     """設定から値を取得し、整数に変換する"""
-    value = config.get(key, {}).get('value', 0)
+    if key == "NUM_NODES" and isinstance(config.get(key), (int, str)):
+        try:
+            return int(config[key])
+        except (ValueError, TypeError):
+            return 0
+
+    keys = key.split('.')
+    value = config
+    for k in keys:
+        if isinstance(value, dict):
+            value = value.get(k, {})
+        else:
+            return 0
+            
+    if isinstance(value, dict) and 'value' in value:
+        value = value['value']
+        
+    if isinstance(value, dict):
+        value = value.get('num_nodes', 0)
+        
     try:
         return int(value)
     except (ValueError, TypeError):
@@ -43,7 +62,16 @@ def get_config_value_multi(config: Dict[str, Any], keys: Tuple[str, ...]) -> int
 
 def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dict[str, Any], team: str, node: EasyDict) -> int:
     """GPUカウントを計算する"""
-    if team in ["abeja-geniac", "alt-geniac", "aiinside-geniac"]:
+    if team == "abeja-geniac":
+        if "NUM_NODES" in config_dict:
+            try:
+                num_nodes = int(config_dict["NUM_NODES"])
+            except (ValueError, TypeError):
+                pass
+        elif isinstance(config_dict.get('trainer', {}).get('value', {}), dict):
+            num_nodes = config_dict['trainer']['value'].get('num_nodes', num_nodes)
+        return num_nodes * 8
+    elif team == "alt-geniac" or team == "aiinside-geniac":
         return num_nodes * 8
     elif team == "ricoh-geniac":
         run_name = node.description
@@ -57,7 +85,7 @@ def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dic
         summary_dict = json.loads(node.summaryMetrics)
         gpu_count = summary_dict.get("gpus", 0)
         return gpu_count
-    elif team =="aihub-geniac":
+    elif team == "aihub-geniac":
         num_nodes_str = node.description if node else "0Node"
         num_gpus = node.runInfo.gpuCount if node.runInfo else 0
         if num_nodes_str and num_nodes_str[-5].isdigit() and num_nodes_str.endswith("Node"):
