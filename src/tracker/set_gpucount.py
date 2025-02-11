@@ -6,7 +6,7 @@ import re
 TEAM_CONFIGS = {
     "abeja-geniac": (("NUM_NODES", "trainer"), None),
     "aidealab-geniac": ("gpus", None),
-    "aihub-geniac": ("nnodes", None),
+    "aihub-geniac": (("nnodes" "trainer"), None),
     "aiinside-geniac": ("nnodes", None),
     "alt-geniac": ("NNODES", None),
     "datagrid-geniac": None,
@@ -85,12 +85,20 @@ def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dic
         gpu_count = summary_dict.get("gpus", 0)
         return gpu_count
     elif team == "aihub-geniac":
-        num_nodes_str = node.description if node else "0Node"
-        num_gpus = node.runInfo.gpuCount if node.runInfo else 0
-        if num_nodes_str and num_nodes_str[-5].isdigit() and num_nodes_str.endswith("Node"):
-            num_nodes = int(num_nodes_str[-5])
+        if "nnodes" in config_dict:
+            try:
+                num_nodes = int(config_dict["nnodes"])
+            except (ValueError, TypeError):
+                pass
+        elif isinstance(config_dict.get('trainer', {}).get('value', {}), dict):
+            num_nodes = config_dict['trainer']['value'].get('nnodes', num_nodes)
         else:
-            num_nodes = 0
+            num_nodes_str = node.description if node else "0Node"
+            num_gpus = node.runInfo.gpuCount if node.runInfo else 0
+            if num_nodes_str and num_nodes_str[-5].isdigit() and num_nodes_str.endswith("Node"):
+                num_nodes = int(num_nodes_str[-5])
+            else:
+                num_nodes = 0
         return num_nodes * num_gpus
     elif gpu_key:
         num_gpus = get_config_value(config_dict, gpu_key)
