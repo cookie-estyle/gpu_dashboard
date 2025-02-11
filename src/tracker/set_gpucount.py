@@ -104,6 +104,9 @@ def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dic
 def set_gpucount(node: EasyDict, team: str) -> int:
     """チームごとのGPUカウントを設定する"""
     default_gpu_count = node.runInfo.gpuCount if node.runInfo else 0
+
+    if team == "datagrid-geniac" and node.runInfo and not node.runInfo.gpu:
+        return 8
     
     if team not in TEAM_CONFIGS:
         print(f"Unknown team {team}. Using default GPU count.")

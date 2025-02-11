@@ -144,7 +144,7 @@ class RunManager:
             createdAt = dt.datetime.fromisoformat(node.createdAt.rstrip('Z')) + dt.timedelta(hours=JAPAN_UTC_OFFSET)
             updatedAt = dt.datetime.fromisoformat(node.heartbeatAt.rstrip('Z')) + dt.timedelta(hours=JAPAN_UTC_OFFSET)
 
-            if self.__is_run_valid(node, createdAt, updatedAt, start, end):
+            if self.__is_run_valid(node, createdAt, updatedAt, start, end, team):
                 run_path = "/".join((team, project, node.name))
                 gpu_count = set_gpucount(node, team)
                 cpu_count = node.runInfo.cpuCount if node.runInfo else 0
@@ -164,11 +164,11 @@ class RunManager:
         print(f"Total valid runs for {team}/{project}: {len(runs)}")
         return runs
 
-    def __is_run_valid(self, node, createdAt, updatedAt, start, end) -> bool:
+    def __is_run_valid(self, node, createdAt, updatedAt, start, end, team) -> bool:
         # 必要な情報が含まれていないものはスキップ
         if not node.get("runInfo"):
             return False
-        if not node.get("runInfo").get("gpu"):
+        if not node.get("runInfo").get("gpu") and not team == "datagrid-geniac":
             return False
         
         # ランの期間と指定期間に重なりがあるかチェック
