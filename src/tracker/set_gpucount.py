@@ -3,7 +3,6 @@ from easydict import EasyDict
 import json
 import re
 
-# 定数
 TEAM_CONFIGS = {
     "abeja-geniac": (("NUM_NODES", "trainer"), None),
     "aidealab-geniac": ("gpus", None),
