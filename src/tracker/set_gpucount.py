@@ -2,6 +2,7 @@ from typing import Dict, Any, Tuple, Optional
 from easydict import EasyDict
 import json
 import re
+import wandb
 
 TEAM_CONFIGS = {
     "abeja-geniac": (("NUM_NODES", "trainer"), None),
@@ -59,16 +60,23 @@ def get_config_value_multi(config: Dict[str, Any], keys: Tuple[str, ...]) -> int
             return value
     return 0
 
-def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dict[str, Any], team: str, node: EasyDict) -> int:
+def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dict[str, Any], team: str, node: EasyDict, run_path: str) -> int:
     """GPUカウントを計算する"""
     if team == "abeja-geniac":
         if "NUM_NODES" in config_dict:
-            try:
-                num_nodes = int(config_dict["NUM_NODES"])
-            except (ValueError, TypeError):
-                pass
-        elif isinstance(config_dict.get('trainer', {}).get('value', {}), dict):
+            num_nodes = int(config_dict["NUM_NODES"])
+        elif 'trainer' in config_dict and 'value' in config_dict['trainer']:
             num_nodes = config_dict['trainer']['value'].get('num_nodes', num_nodes)
+        else:
+            api = wandb.Api()
+            run = api.run(run_path)
+            file = run.file("wandb-metadata.json").download(replace=True)
+            with open(file.name, 'r') as f:
+                content = json.load(f)
+                if 'slurm' in content and 'nnodes' in content['slurm']:
+                    num_nodes = int(content['slurm']['nnodes'])
+                else:
+                    print(f"Warning: Could not find SLURM nnodes in metadata for {run_path}")
         return num_nodes * 8
     elif team == "alt-geniac" or team == "aiinside-geniac":
         return num_nodes * 8
@@ -111,7 +119,7 @@ def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dic
     else:
         return num_nodes
 
-def set_gpucount(node: EasyDict, team: str) -> int:
+def set_gpucount(node: EasyDict, team: str, run_path: str) -> int:
     """チームごとのGPUカウントを設定する"""
     default_gpu_count = node.runInfo.gpuCount if node.runInfo else 0
 
@@ -135,7 +143,7 @@ def set_gpucount(node: EasyDict, team: str) -> int:
         if num_nodes == 0:
             print(f"num_nodes is 0 for {team} ({node.name}).")
         
-        gpu_count = calculate_gpu_count(num_nodes, gpu_key, config_dict, team, node)
+        gpu_count = calculate_gpu_count(num_nodes, gpu_key, config_dict, team, node, run_path)
         
         print(f"Calculated GPU count for {team} ({node.name}): {gpu_count}")
         return gpu_count if gpu_count > 0 else default_gpu_count
