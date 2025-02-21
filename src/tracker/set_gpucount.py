@@ -88,10 +88,12 @@ def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dic
         if "nnodes" in config_dict:
             try:
                 num_nodes = int(config_dict["nnodes"])
+                return num_nodes * 8
             except (ValueError, TypeError):
                 pass
         elif isinstance(config_dict.get('trainer', {}).get('value', {}), dict):
             num_nodes = config_dict['trainer']['value'].get('nnodes', num_nodes)
+            return int(num_nodes) * 8
         else:
             num_nodes_str = node.description if node else "0Node"
             num_gpus = node.runInfo.gpuCount if node.runInfo else 0
