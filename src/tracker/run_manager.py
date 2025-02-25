@@ -146,7 +146,7 @@ class RunManager:
 
             if self.__is_run_valid(node, createdAt, updatedAt, start, end, team):
                 run_path = "/".join((team, project, node.name))
-                gpu_count = set_gpucount(node, team, run_path)
+                gpu_count = set_gpucount(node, team, run_path, createdAt, updatedAt)
                 cpu_count = node.runInfo.cpuCount if node.runInfo else 0
                 run = Run(
                     run_path=run_path,

@@ -1,5 +1,6 @@
 from typing import Dict, Any, Tuple, Optional
 from easydict import EasyDict
+from datetime import datetime
 import json
 import re
 import wandb
@@ -119,13 +120,28 @@ def calculate_gpu_count(num_nodes: int, gpu_key: Optional[str], config_dict: Dic
     else:
         return num_nodes
 
-def set_gpucount(node: EasyDict, team: str, run_path: str) -> int:
+def set_gpucount(node: EasyDict, team: str, run_path: str, createdAt, updatedAt) -> int:
     """チームごとのGPUカウントを設定する"""
     default_gpu_count = node.runInfo.gpuCount if node.runInfo else 0
-
-    if team == "datagrid-geniac" and node.runInfo and not node.runInfo.gpu:
-        return 8
     
+    if team == "syntheticgestalt-geniac":
+        if default_gpu_count < 8 or createdAt < datetime.fromisoformat("2025-02-17"):
+            gpu_count = default_gpu_count
+        else:
+            num_nodes_str = node.description if node else "0Nodes"
+            if num_nodes_str[-6].isdigit() and num_nodes_str.endswith("Nodes"):
+                num_nodes = int(num_nodes_str[-6])
+            else:
+                num_nodes = 3
+            gpu_count = num_nodes * 8
+        return gpu_count
+    
+    elif team == "datagrid-geniac":
+        if node.runInfo and not node.runInfo.gpu:
+            return 8
+        else:
+            pass
+
     if team not in TEAM_CONFIGS:
         print(f"Unknown team {team}. Using default GPU count.")
         return default_gpu_count
