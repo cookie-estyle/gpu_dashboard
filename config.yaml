@@ -172,5 +172,9 @@ companies:
     schedule:
       - date: "2024-10-25"
         assigned_gpu_node: 5
+      - date: "2025-03-01"
+        assigned_gpu_node: 9
+      - date: "2025-04-01"
+        assigned_gpu_node: 5
       - date: "2025-04-24"
         assigned_gpu_node: 0
