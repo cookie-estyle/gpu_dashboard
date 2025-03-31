@@ -50,16 +50,28 @@ class RunManager:
         self.team_configs = parse_configs(CONFIG)
         self.start_date = dt.datetime.strptime(date_range[0], "%Y-%m-%d").date()
         self.end_date = dt.datetime.strptime(date_range[1], "%Y-%m-%d").date()
-        self.api = wandb.Api(timeout=60)
+        self.api = wandb.Api(timeout=30)
         self.test_mode = test_mode
         self.total_valid_runs = 0
     
     def fetch_runs(self):
-        self.__get_projects()
-        self.__get_runs()
-        self.__get_metrics()
-        combined_df = self.__combined_run_df()
-        return combined_df
+        if self.test_mode == False:
+            with wandb.init(
+                entity=CONFIG.dashboard.entity,
+                project=CONFIG.dashboard.project,
+                name=f"Fetch Runs",
+            ) as run:
+                self.__get_projects()
+                self.__get_runs()
+                self.__get_metrics()
+                combined_df = self.__combined_run_df()
+                return combined_df
+        else:
+            self.__get_projects()
+            self.__get_runs()
+            self.__get_metrics()
+            combined_df = self.__combined_run_df()
+            return combined_df
     
     def __get_projects(self):
         for team_config in self.team_configs:
@@ -132,9 +144,9 @@ class RunManager:
             createdAt = dt.datetime.fromisoformat(node.createdAt.rstrip('Z')) + dt.timedelta(hours=JAPAN_UTC_OFFSET)
             updatedAt = dt.datetime.fromisoformat(node.heartbeatAt.rstrip('Z')) + dt.timedelta(hours=JAPAN_UTC_OFFSET)
 
-            if self.__is_run_valid(node, createdAt, updatedAt, start, end):
+            if self.__is_run_valid(node, createdAt, updatedAt, start, end, team):
                 run_path = "/".join((team, project, node.name))
-                gpu_count = set_gpucount(node, team)
+                gpu_count = set_gpucount(node, team, run_path, createdAt, updatedAt)
                 cpu_count = node.runInfo.cpuCount if node.runInfo else 0
                 run = Run(
                     run_path=run_path,
@@ -152,11 +164,11 @@ class RunManager:
         print(f"Total valid runs for {team}/{project}: {len(runs)}")
         return runs
 
-    def __is_run_valid(self, node, createdAt, updatedAt, start, end) -> bool:
+    def __is_run_valid(self, node, createdAt, updatedAt, start, end, team) -> bool:
         # 必要な情報が含まれていないものはスキップ
         if not node.get("runInfo"):
             return False
-        if not node.get("runInfo").get("gpu"):
+        if not node.get("runInfo").get("gpu") and not team == "datagrid-geniac":
             return False
         
         # ランの期間と指定期間に重なりがあるかチェック
@@ -397,6 +409,6 @@ class RunManager:
 
 if __name__ == "__main__":
     date_range = ["2024-10-25", "2024-10-25"]
-    rm = RunManager(date_range)
+    rm = RunManager(date_range, True)
     df = rm.fetch_runs()
     df.write_csv("dev/new_runs_df.csv")
